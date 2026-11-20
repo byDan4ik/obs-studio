@@ -616,8 +616,19 @@ void SourceTree::AddGroup()
 
 void SourceTree::UpdateNoSourcesMessage()
 {
-	QString file = !App()->IsThemeDark() ? ":res/images/no_sources.svg" : "theme:Dark/no_sources.svg";
-	iconNoSources.load(file);
+	const bool tehnikippooTheme =
+		App()->GetTheme()->id == QStringLiteral("com.obsproject.Yami.TehnikiPPOO");
+	QString file;
+	if (tehnikippooTheme) {
+		file = "theme:Tehnikippoo/logo.jpg";
+	} else if (App()->IsThemeDark()) {
+		file = "theme:Dark/no_sources.svg";
+	} else {
+		file = ":res/images/no_sources.svg";
+	}
+
+	iconNoSources = QIcon(file);
+	noSourcesIconSize = tehnikippooTheme ? QSize(48, 48) : QSize(32, 32);
 
 	QTextOption opt(Qt::AlignHCenter);
 	opt.setWrapMode(QTextOption::WordWrap);
@@ -638,10 +649,8 @@ void SourceTree::paintEvent(QPaintEvent *event)
 			textPrepared = true;
 		}
 
-		QRectF iconRect = iconNoSources.viewBoxF();
-		iconRect.setSize(QSizeF(32.0, 32.0));
-
-		QSizeF iconSize = iconRect.size();
+		QRectF iconRect(QPointF(0.0, 0.0), QSizeF(noSourcesIconSize));
+		QSizeF iconSize = noSourcesIconSize;
 		QSizeF textSize = textNoSources.size();
 		QSizeF thisSize = size();
 		const qreal spacing = 16.0;
@@ -651,7 +660,7 @@ void SourceTree::paintEvent(QPaintEvent *event)
 		qreal x = thisSize.width() / 2.0 - iconSize.width() / 2.0;
 		qreal y = thisSize.height() / 2.0 - totalHeight / 2.0;
 		iconRect.moveTo(std::round(x), std::round(y));
-		iconNoSources.render(&p, iconRect);
+		iconNoSources.paint(&p, iconRect.toRect());
 
 		x = thisSize.width() / 2.0 - textSize.width() / 2.0;
 		y += spacing + iconSize.height();

@@ -3,9 +3,10 @@
 #include "SourceTreeItem.hpp"
 #include "SourceTreeModel.hpp"
 
+#include <QIcon>
 #include <QListView>
+#include <QSize>
 #include <QStaticText>
-#include <QSvgRenderer>
 
 class SourceTree : public QListView {
 	Q_OBJECT
@@ -17,7 +18,8 @@ class SourceTree : public QListView {
 
 	bool textPrepared = false;
 	QStaticText textNoSources;
-	QSvgRenderer iconNoSources;
+	QIcon iconNoSources;
+	QSize noSourcesIconSize = QSize(32, 32);
 
 	OBSData undoSceneData;
 
