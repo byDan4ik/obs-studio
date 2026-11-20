@@ -1912,6 +1912,10 @@ void OBSBasic::closeWindow()
 
 	applicationShutdown();
 
+#ifdef _WIN32
+	StartPendingForkUpdate();
+#endif
+
 #ifndef __APPLE__
 	deleteLater();
 

@@ -1619,6 +1619,16 @@ private:
 
 	void TimedCheckForUpdates();
 	void CheckForUpdates(bool manualUpdate);
+#ifdef _WIN32
+	bool forkUpdateInProgress = false;
+	QString pendingForkUpdateScript;
+	QString pendingForkUpdateStage;
+	QString pendingForkUpdateInstallRoot;
+	QString pendingForkUpdateVersion;
+
+	void DownloadForkRelease(const QUrl &assetUrl, const QString &version, const QByteArray &sha256, qint64 size);
+	void StartPendingForkUpdate();
+#endif
 
 	void MacBranchesFetched(const QString &branch, bool manualUpdate);
 	void ReceivedIntroJson(const std::string &text);
