@@ -959,6 +959,11 @@ int main(int argc, char *argv[])
 
 	obs_set_cmdline_args(argc, argv);
 
+#if ALLOW_PORTABLE_MODE
+	portable_mode = true;
+	bool disable_portable_mode = false;
+#endif
+
 	for (int i = 1; i < argc; i++) {
 		if (arg_is(argv[i], "--multi", "-m")) {
 			multi = true;
@@ -966,6 +971,9 @@ int main(int argc, char *argv[])
 #if ALLOW_PORTABLE_MODE
 		} else if (arg_is(argv[i], "--portable", "-p")) {
 			portable_mode = true;
+		} else if (arg_is(argv[i], "--nonportable", "-n")) {
+			portable_mode = false;
+			disable_portable_mode = true;
 
 #endif
 		} else if (arg_is(argv[i], "--verbose", nullptr)) {
@@ -1043,6 +1051,7 @@ int main(int argc, char *argv[])
 				"--minimize-to-tray: Minimize to system tray.\n"
 #if ALLOW_PORTABLE_MODE
 				"--portable, -p: Use portable mode.\n"
+				"--nonportable, -n: Use standard user configuration mode.\n"
 #endif
 				"--multi, -m: Don't warn when launching multiple instances.\n\n"
 				"--safe-mode: Run in Safe Mode (disables third-party plugins, scripting, and WebSockets).\n"
@@ -1067,7 +1076,7 @@ int main(int argc, char *argv[])
 	}
 
 #if ALLOW_PORTABLE_MODE
-	if (!portable_mode) {
+	if (!portable_mode && !disable_portable_mode) {
 		portable_mode = os_file_exists(BASE_PATH "/portable_mode") ||
 				os_file_exists(BASE_PATH "/obs_portable_mode") ||
 				os_file_exists(BASE_PATH "/portable_mode.txt") ||

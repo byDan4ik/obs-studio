@@ -1006,6 +1006,7 @@ static void vlcs_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, S_TRACK, 1);
 	obs_data_set_default_bool(settings, S_SUBTITLE_ENABLE, false);
 	obs_data_set_default_int(settings, S_SUBTITLE_TRACK, 1);
+	obs_data_set_default_bool(settings, "monitoring_enabled", true);
 }
 
 static obs_properties_t *vlcs_properties(void *data)
