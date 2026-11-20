@@ -221,6 +221,10 @@ std::optional<OBSSource> setupNewSource(QWidget *parent, const char *id, const c
 		return std::nullopt;
 	}
 
+	if (obs_source_get_output_flags(source) & OBS_SOURCE_MONITOR_BY_DEFAULT) {
+		obs_source_set_monitoring_enabled(source, true);
+	}
+
 	return OBSSource(source.Get());
 }
 } // namespace

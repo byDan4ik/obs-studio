@@ -2367,7 +2367,8 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 		}
 	}
 
-	obs_data_set_default_bool(source_data, "monitoring_enabled", false);
+	obs_data_set_default_bool(source_data, "monitoring_enabled",
+				  (caps & OBS_SOURCE_MONITOR_BY_DEFAULT) != 0);
 	if (prev_ver < MAKE_SEMANTIC_VERSION(33, 0, 0)) {
 		obs_data_set_bool(source_data, "monitoring_enabled", monitoring_type != OBS_MONITORING_TYPE_NONE);
 	}
