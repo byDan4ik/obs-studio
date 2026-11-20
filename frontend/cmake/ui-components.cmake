@@ -20,6 +20,8 @@ target_sources(
     components/AlignmentSelector.hpp
     components/ApplicationAudioCaptureToolbar.cpp
     components/ApplicationAudioCaptureToolbar.hpp
+    components/AudioPlaylistPlayer.cpp
+    components/AudioPlaylistPlayer.hpp
     components/AudioCaptureToolbar.cpp
     components/AudioCaptureToolbar.hpp
     components/BalanceSlider.hpp

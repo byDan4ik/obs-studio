@@ -21,6 +21,7 @@
 #include "ui-config.h"
 
 #include "ColorSelect.hpp"
+#include "components/AudioPlaylistPlayer.hpp"
 #include "OBSBasicControls.hpp"
 #include "OBSBasicStats.hpp"
 #include "plugin-manager/PluginManager.hpp"
@@ -245,6 +246,12 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	int sideDockWidth = std::min(width() * 30 / 100, 320);
 	resizeDocks({ui->scenesDock, ui->sourcesDock}, {sideDockWidth, sideDockWidth}, Qt::Horizontal);
 	addDockWidget(Qt::BottomDockWidgetArea, controlsDock);
+
+	auto *musicPlayerDock = new OBSDock();
+	musicPlayerDock->setObjectName(QStringLiteral("musicPlayerDock"));
+	musicPlayerDock->setWindowTitle(QTStr("MusicPlayer.Title"));
+	musicPlayerDock->setWidget(new AudioPlaylistPlayer(musicPlayerDock));
+	AddDockWidget(musicPlayerDock, Qt::RightDockWidgetArea);
 
 	startingDockLayout = saveState();
 
@@ -1220,6 +1227,9 @@ void OBSBasic::OBSInit()
 #endif
 
 #if defined(_WIN32) || defined(__APPLE__)
+#if defined(_WIN32)
+	ui->actionRepair->setVisible(false);
+#endif
 	if (App()->IsUpdaterDisabled()) {
 		ui->actionCheckForUpdates->setEnabled(false);
 #if defined(_WIN32)

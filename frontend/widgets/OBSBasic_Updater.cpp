@@ -21,12 +21,12 @@
 
 #include <dialogs/OBSWhatsNew.hpp>
 
-#ifdef _WIN32
-#include <utility/AutoUpdateThread.hpp>
-#endif
 #ifdef ENABLE_SPARKLE_UPDATER
 #include <utility/MacUpdateThread.hpp>
 #include <utility/OBSSparkle.hpp>
+#endif
+#ifdef _WIN32
+#include <utility/RemoteTextThread.hpp>
 #endif
 #if defined(_WIN32) || defined(WHATSNEW_ENABLED)
 #include <utility/WhatsNewBrowserInitThread.hpp>
@@ -37,6 +37,14 @@
 #include <browser-panel.hpp>
 #endif
 #include <qt-wrappers.hpp>
+
+#ifdef _WIN32
+#include <QDesktopServices>
+#include <QMessageBox>
+#include <QVersionNumber>
+
+#include <nlohmann/json.hpp>
+#endif
 
 #ifdef _WIN32
 #define UPDATE_CHECK_INTERVAL (60 * 60 * 24 * 4) /* 4 days */
@@ -203,14 +211,109 @@ void OBSBasic::TimedCheckForUpdates()
 void OBSBasic::CheckForUpdates(bool manualUpdate)
 {
 #if _WIN32
-	ui->actionCheckForUpdates->setEnabled(false);
-	ui->actionRepair->setEnabled(false);
-
 	if (updateCheckThread && updateCheckThread->isRunning()) {
 		return;
 	}
-	updateCheckThread.reset(new AutoUpdateThread(manualUpdate));
-	updateCheckThread->start();
+
+	ui->actionCheckForUpdates->setEnabled(false);
+	const std::vector<std::string> headers = {"Accept: application/vnd.github+json",
+						  "X-GitHub-Api-Version: 2022-11-28"};
+	auto *thread = new RemoteTextThread("https://api.github.com/repos/byDan4ik/obs-studio/releases/latest",
+					    std::vector<std::string>(headers), {}, {}, 15);
+	connect(thread, &RemoteTextThread::Result, this,
+		[this, manualUpdate](const std::string &text, const std::string &error) {
+			updateCheckFinished();
+			config_set_int(App()->GetAppConfig(), "General", "LastUpdateCheck", (long long)time(nullptr));
+			config_set_int(App()->GetAppConfig(), "General", "LastVersion", LIBOBS_API_VER);
+			config_save_safe(App()->GetAppConfig(), "tmp", nullptr);
+
+			if (!error.empty()) {
+				blog(LOG_WARNING, "GitHub release check failed: %s", error.c_str());
+				if (manualUpdate) {
+					QMessageBox::warning(this, QTStr("GitHubUpdater.Error.Title"),
+							     QTStr("GitHubUpdater.Error.Text").arg(QString::fromStdString(error)));
+				}
+				return;
+			}
+
+			QString releaseTag;
+			QString releaseUrl;
+			QString releaseNotes;
+			try {
+				const nlohmann::json release = nlohmann::json::parse(text);
+				if (release.value("draft", false) || release.value("prerelease", false))
+					return;
+
+				releaseTag = QString::fromStdString(release.at("tag_name").get<std::string>());
+				releaseUrl = QString::fromStdString(release.at("html_url").get<std::string>());
+				releaseNotes = QString::fromStdString(release.value("body", std::string()));
+			} catch (const nlohmann::json::exception &exception) {
+				blog(LOG_WARNING, "Parsing GitHub release information failed: %s", exception.what());
+				if (manualUpdate) {
+					QMessageBox::warning(this, QTStr("GitHubUpdater.Error.Title"),
+							     QTStr("GitHubUpdater.InvalidRelease"));
+				}
+				return;
+			}
+
+			const QUrl parsedReleaseUrl(releaseUrl);
+			const QString expectedPath = QStringLiteral("/byDan4ik/obs-studio/releases/tag/%1")
+							     .arg(QString::fromUtf8(QUrl::toPercentEncoding(releaseTag)));
+			if (parsedReleaseUrl.scheme() != QStringLiteral("https") ||
+			    parsedReleaseUrl.host() != QStringLiteral("github.com") ||
+			    parsedReleaseUrl.path() != expectedPath) {
+				blog(LOG_WARNING, "Rejected unexpected GitHub release URL: %s", QT_TO_UTF8(releaseUrl));
+				if (manualUpdate) {
+					QMessageBox::warning(this, QTStr("GitHubUpdater.Error.Title"),
+							     QTStr("GitHubUpdater.InvalidRelease"));
+				}
+				return;
+			}
+
+			const QVersionNumber latestVersion = QVersionNumber::fromString(releaseTag);
+#ifdef OBS_FORK_RELEASE_VERSION
+			const QVersionNumber currentVersion = QVersionNumber::fromString(QStringLiteral(OBS_FORK_RELEASE_VERSION));
+#else
+			const QVersionNumber currentVersion =
+				QVersionNumber::fromString(QString::fromUtf8(obs_get_version_string()));
+#endif
+			if (latestVersion.isNull() || latestVersion.toString() != releaseTag || currentVersion.isNull()) {
+				blog(LOG_WARNING, "Invalid fork version: current=%s latest=%s",
+				     obs_get_version_string(), QT_TO_UTF8(releaseTag));
+				if (manualUpdate) {
+					QMessageBox::warning(this, QTStr("GitHubUpdater.Error.Title"),
+							     QTStr("GitHubUpdater.InvalidRelease"));
+				}
+				return;
+			}
+
+			if (QVersionNumber::compare(latestVersion, currentVersion) <= 0) {
+				if (manualUpdate) {
+					QMessageBox::information(this, QTStr("GitHubUpdater.NoUpdates.Title"),
+								 QTStr("GitHubUpdater.NoUpdates.Text"));
+				}
+				return;
+			}
+
+			if (releaseNotes.isEmpty())
+				releaseNotes = QTStr("GitHubUpdater.ReleaseNotesUnavailable");
+
+			QMessageBox message(this);
+			message.setIcon(QMessageBox::Information);
+			message.setWindowTitle(QTStr("GitHubUpdater.NewVersion.Title"));
+			message.setText(QTStr("GitHubUpdater.NewVersion.Text").arg(releaseTag));
+			message.setInformativeText(releaseNotes);
+			QPushButton *openRelease = message.addButton(QTStr("GitHubUpdater.OpenRelease"), QMessageBox::AcceptRole);
+			message.addButton(QTStr("Cancel"), QMessageBox::RejectRole);
+			message.exec();
+
+			if (message.clickedButton() == openRelease && !QDesktopServices::openUrl(parsedReleaseUrl)) {
+				blog(LOG_WARNING, "Failed to open GitHub release page: %s", QT_TO_UTF8(releaseUrl));
+			}
+		});
+
+	updateCheckThread.reset(thread);
+	thread->start();
 #elif defined(ENABLE_SPARKLE_UPDATER)
 	ui->actionCheckForUpdates->setEnabled(false);
 

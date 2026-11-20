@@ -31,6 +31,10 @@ endif()
 add_executable(obs-studio)
 add_executable(OBS::studio ALIAS obs-studio)
 
+if(OBS_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$")
+  target_compile_definitions(obs-studio PRIVATE OBS_FORK_RELEASE_VERSION="${OBS_VERSION}")
+endif()
+
 target_link_libraries(
   obs-studio
   PRIVATE

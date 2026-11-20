@@ -1,79 +1,57 @@
-OBS Studio <https://obsproject.com>
-===================================
+OBS Studio byDan4ik
+===================
 
-.. image:: https://github.com/obsproject/obs-studio/actions/workflows/push.yaml/badge.svg?branch=master
-   :alt: OBS Studio Build Status - GitHub Actions
-   :target: https://github.com/obsproject/obs-studio/actions/workflows/push.yaml?query=branch%3Amaster
+Это персональная x64-версия OBS Studio на основе
+`официального проекта OBS Studio <https://github.com/obsproject/obs-studio>`_.
+В ней сохранены возможности оригинального OBS и добавлены изменения для
+удобства работы с аудио и оформления.
 
-.. image:: https://badges.crowdin.net/obs-studio/localized.svg
-   :alt: OBS Studio Translation Project Progress
-   :target: https://crowdin.com/project/obs-studio
-
-.. image:: https://img.shields.io/discord/348973006581923840.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2
-   :alt: OBS Studio Discord Server
-   :target: https://obsproject.com/discord
-
-What is OBS Studio?
--------------------
-
-OBS Studio is software designed for capturing, compositing, encoding,
-recording, and streaming video content, efficiently.
-
-It's distributed under the GNU General Public License v2 (or any later
-version) - see the accompanying COPYING file for more details.
-
-Quick Links
------------
-
-- Website: https://obsproject.com
-
-- Help/Documentation/Guides: https://github.com/obsproject/obs-studio/wiki
-
-- Forums: https://obsproject.com/forum/
-
-- Build Instructions: https://github.com/obsproject/obs-studio/wiki/Install-Instructions
-
-- Developer/API Documentation: https://obsproject.com/docs
-
-- Donating/backing/sponsoring: https://obsproject.com/contribute
-
-- Bug Tracker: https://github.com/obsproject/obs-studio/issues
-
-Contributing
+Что изменено
 ------------
 
-- If you would like to help fund or sponsor the project, you can do so
-  via `Patreon <https://www.patreon.com/obsproject>`_, `OpenCollective
-  <https://opencollective.com/obsproject>`_, or `PayPal
-  <https://www.paypal.me/obsproject>`_.  See our `contribute page
-  <https://obsproject.com/contribute>`_ for more information.
+* **Мониторинг медиаисточников.** Для новых медиаисточников автоматически
+  включается мониторинг аудио.
+* **Фоновый музыкальный плеер.** Отдельная док-панель воспроизводит MP3
+  независимо от активной сцены. Можно добавлять отдельные файлы или все MP3 из
+  папки в общую очередь, переключать треки и управлять воспроизведением.
+* **Очередь воспроизведения.** Боковой список показывает текущие, уже
+  прослушанные и ожидающие треки. Выбор трека в списке начинает его
+  воспроизведение.
+* **Тема «Техники ППОО».** Добавлены оформление и графические материалы группы.
+* **Портативная версия.** Настройки хранятся рядом с программой и не требуют
+  установки.
+* **Обновления форка.** OBS проверяет новые выпуски в этом репозитории и
+  открывает страницу релиза на GitHub. Штатный обновлятор оригинального OBS
+  отключён для этой сборки.
 
-- If you wish to contribute code to the project, please make sure to
-  read the coding and commit guidelines:
-  https://github.com/obsproject/obs-studio/blob/master/CONTRIBUTING.md
-  
-- Code for the project follows the code style guidelines, located
-  here: https://github.com/obsproject/obs-studio/blob/master/CODESTYLE.md
+Скачать и обновить
+------------------
 
-- Developer/API documentation can be found here:
-  https://obsproject.com/docs
+Скачайте архив **OBS Studio byDan4ik — Windows x64 portable** со страницы
+`последнего релиза <https://github.com/byDan4ik/obs-studio/releases/latest>`_.
+Для обновления распакуйте содержимое архива поверх текущей папки
+``OBS-Studio-x64`` после закрытия OBS. Не удаляйте папку ``config`` — в ней
+находятся портативные настройки и профили.
 
-- If you wish to contribute translations, do not submit pull requests.
-  Instead, please use Crowdin.  For more information read this page:
-  https://obsproject.com/wiki/How-To-Contribute-Translations-For-OBS
+Запускайте ``bin/64bit/obs64.exe``. В меню **Справка → Проверить обновления**
+можно вручную проверить наличие новой версии. Автоматическая проверка
+выполняется периодически. Программа сообщает о релизе и открывает его страницу;
+архив нужно скачать, закрыть OBS и распаковать поверх текущей папки.
 
-- Contributors to OBS Studio and related repositories are expected to
-  follow our Code of Conduct, which can be read here:
-  https://github.com/obsproject/obs-studio/blob/master/COC.rst
+Версии выпусков имеют вид ``33.0.1.1``, ``33.0.1.2`` и далее. Часть после
+третьей точки — номер выпуска byDan4ik. В интерфейсе версия помечена
+``byDan4ik``.
 
-- Other ways to contribute are by helping people out with support on
-  our forums or in our community chat.  Please limit support to topics
-  you fully understand -- bad advice is worse than no advice.  When it
-  comes to something that you don't fully know or understand, please
-  defer to the official help or official channels.
+Сборка из исходников
+-------------------
 
+Для Windows x64 используются preset ``windows-x64`` и конфигурация
+``RelWithDebInfo``:
 
-SAST Tools
-----------
+.. code-block:: powershell
 
-`PVS-Studio <https://pvs-studio.com/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source>`_ - static analyzer for C, C++, C#, and Java code.
+   cmake --preset windows-x64
+   cmake --build build_x64 --config RelWithDebInfo --parallel
+
+Подробные сведения об OBS Studio, лицензии и официальных возможностях доступны
+в `репозитории OBS Project <https://github.com/obsproject/obs-studio>`_.

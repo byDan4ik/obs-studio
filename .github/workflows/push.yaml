@@ -21,6 +21,7 @@ jobs:
 
   build-project:
     name: Build 🧱
+    if: github.ref_type != 'tag' || github.repository_owner == 'obsproject'
     uses: ./.github/workflows/build-project.yaml
     secrets: inherit
     permissions:

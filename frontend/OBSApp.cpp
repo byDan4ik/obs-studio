@@ -1372,7 +1372,12 @@ string OBSApp::GetVersionString(bool platform) const
 {
 	stringstream ver;
 
+#ifdef OBS_FORK_RELEASE_VERSION
+	ver << OBS_FORK_RELEASE_VERSION;
+#else
 	ver << obs_get_version_string();
+#endif
+	ver << " byDan4ik";
 
 	if (platform) {
 		ver << " (";

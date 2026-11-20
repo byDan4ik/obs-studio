@@ -1,0 +1,79 @@
+name: byDan4ik Windows x64 Release
+on:
+  push:
+    tags:
+      - '*.*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  windows-x64:
+    if: github.repository == 'byDan4ik/obs-studio'
+    runs-on: windows-2025-vs2026
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Validate release version
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+            throw "Release tag must use MAJOR.MINOR.PATCH.FORK_RELEASE, for example 33.0.1.1."
+          }
+
+      - name: Build OBS Studio x64
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Package OBS Studio x64
+        uses: ./.github/actions/package-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Create portable release archive
+        id: package
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = $env:GITHUB_REF_NAME
+          $package = Get-ChildItem 'build_x64' -Filter "obs-studio-*-windows-x64.zip" -File |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (-not $package) {
+            throw 'The Windows x64 build package was not produced.'
+          }
+
+          $stage = Join-Path $env:RUNNER_TEMP "obs-studio-$tag"
+          $archive = Join-Path $env:RUNNER_TEMP "OBS-Studio-byDan4ik-$tag-windows-x64-portable.zip"
+          Expand-Archive -LiteralPath $package.FullName -DestinationPath $stage
+          New-Item -ItemType File -Path (Join-Path $stage 'portable_mode') | Out-Null
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [System.IO.Compression.ZipFile]::CreateFromDirectory(
+            $stage,
+            $archive,
+            [System.IO.Compression.CompressionLevel]::Optimal,
+            $false
+          )
+          "archive=$archive" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          gh release create $env:GITHUB_REF_NAME '${{ steps.package.outputs.archive }}' `
+            --repo $env:GITHUB_REPOSITORY `
+            --title "OBS Studio $env:GITHUB_REF_NAME byDan4ik" `
+            --notes-file .github/release-notes-ru.md
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Publishing the GitHub release failed.'
+          }
