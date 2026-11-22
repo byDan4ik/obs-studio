@@ -176,13 +176,12 @@ void OBSBasic::CreateProgramOptions()
 	connect(configTransitions, &QAbstractButton::clicked, this, onConfig);
 }
 
-void OBSBasic::TogglePreviewProgramMode()
-{
-	SetPreviewProgramMode(!IsPreviewProgramMode());
-}
-
 void OBSBasic::SetPreviewProgramMode(bool enabled)
 {
+	if (!enabled) {
+		return;
+	}
+
 	if (IsPreviewProgramMode() == enabled) {
 		return;
 	}
@@ -367,6 +366,11 @@ void OBSBasic::UpdatePreviewProgramIndicators()
 	if (programLabel && programLabel->text() != program) {
 		programLabel->setText(program);
 	}
+}
+
+void OBSBasic::TogglePreviewProgramMode()
+{
+	SetPreviewProgramMode(true);
 }
 
 OBSSource OBSBasic::GetProgramSource()

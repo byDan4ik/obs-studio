@@ -1471,6 +1471,7 @@ QDoubleSpinBox::down-arrow {
 #pauseRecordButton:!hover:!pressed.state-active,
 #replayBufferButton:!hover:!pressed.state-active,
 #virtualCamButton:!hover:!pressed.state-active,
+#mwButton:!hover:!pressed.state-active,
 #modeSwitch:!hover:!pressed.state-active,
 #broadcastButton:!hover:!pressed.state-active {
     background: var(--primary);
@@ -1482,6 +1483,7 @@ QDoubleSpinBox::down-arrow {
 #pauseRecordButton:hover:!pressed.state-active,
 #replayBufferButton:!pressed.state-active,
 #virtualCamButton:!pressed.state-active,
+#mwButton:hover:!pressed.state-active,
 #modeSwitch:hover:!pressed.state-active,
 #broadcastButton:hover:!pressed.state-active {
     background: var(--primary_light);

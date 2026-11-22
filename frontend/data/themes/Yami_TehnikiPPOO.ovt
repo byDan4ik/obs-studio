@@ -122,6 +122,7 @@ QTabBar QToolButton {
 #pauseRecordButton:!hover:!pressed.state-active,
 #replayBufferButton:!hover:!pressed.state-active,
 #virtualCamButton:!hover:!pressed.state-active,
+#mwButton:!hover:!pressed.state-active,
 #modeSwitch:!hover:!pressed.state-active,
 #broadcastButton:!hover:!pressed.state-active {
     background: var(--button_bg_red);
@@ -133,6 +134,7 @@ QTabBar QToolButton {
 #pauseRecordButton:hover:!pressed.state-active,
 #replayBufferButton:hover:!pressed.state-active,
 #virtualCamButton:hover:!pressed.state-active,
+#mwButton:hover:!pressed.state-active,
 #modeSwitch:hover:!pressed.state-active,
 #broadcastButton:hover:!pressed.state-active {
     background: var(--button_bg_red_hover);
@@ -143,6 +145,7 @@ QTabBar QToolButton {
 #pauseRecordButton:pressed.state-active,
 #replayBufferButton:pressed.state-active,
 #virtualCamButton:pressed.state-active,
+#mwButton:pressed.state-active,
 #modeSwitch:pressed.state-active,
 #broadcastButton:pressed.state-active {
     background: var(--button_bg_red_down);

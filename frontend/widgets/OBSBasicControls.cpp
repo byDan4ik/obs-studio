@@ -4,10 +4,174 @@
 
 #include "moc_OBSBasicControls.cpp"
 
+#include <QMessageBox>
+
+#include <cwchar>
+#include <string>
+#include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+namespace {
+
+#ifdef _WIN32
+constexpr wchar_t SoundSchemesKey[] = L"AppEvents\\Schemes";
+constexpr wchar_t DwmKey[] = L"Software\\Microsoft\\Windows\\DWM";
+constexpr wchar_t ExplorerAdvancedKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced";
+
+bool ReadSoundScheme(std::wstring &scheme)
+{
+	wchar_t value[128] = {};
+	DWORD size = sizeof(value);
+	const LSTATUS status =
+		RegGetValueW(HKEY_CURRENT_USER, SoundSchemesKey, nullptr, RRF_RT_REG_SZ, nullptr, value, &size);
+	if (status != ERROR_SUCCESS)
+		return false;
+
+	scheme.assign(value);
+	return true;
+}
+
+bool WriteSoundScheme(const wchar_t *scheme)
+{
+	HKEY key = nullptr;
+	if (RegCreateKeyExW(HKEY_CURRENT_USER, SoundSchemesKey, 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key,
+			    nullptr) != ERROR_SUCCESS) {
+		return false;
+	}
+
+	const DWORD size = static_cast<DWORD>((std::wcslen(scheme) + 1) * sizeof(wchar_t));
+	const LSTATUS status = RegSetValueExW(key, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE *>(scheme), size);
+	RegCloseKey(key);
+	return status == ERROR_SUCCESS;
+}
+
+bool CopyDefaultSoundEventValues(HKEY eventKey, HKEY currentKey)
+{
+	HKEY defaultKey = nullptr;
+	if (RegOpenKeyExW(eventKey, L".Default", 0, KEY_QUERY_VALUE, &defaultKey) != ERROR_SUCCESS)
+		return false;
+
+	DWORD type = 0;
+	DWORD size = 0;
+	LSTATUS status = RegQueryValueExW(defaultKey, nullptr, nullptr, &type, nullptr, &size);
+	if (status == ERROR_FILE_NOT_FOUND || (status == ERROR_SUCCESS && size == 0)) {
+		RegCloseKey(defaultKey);
+		const wchar_t emptyValue[] = L"";
+		return RegSetValueExW(currentKey, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE *>(emptyValue),
+				      sizeof(emptyValue)) == ERROR_SUCCESS;
+	}
+
+	if (status != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ)) {
+		RegCloseKey(defaultKey);
+		return false;
+	}
+
+	std::vector<BYTE> value(size);
+	status = RegQueryValueExW(defaultKey, nullptr, nullptr, &type, value.data(), &size);
+	RegCloseKey(defaultKey);
+	if (status != ERROR_SUCCESS)
+		return false;
+
+	return RegSetValueExW(currentKey, nullptr, 0, type, value.data(), size) == ERROR_SUCCESS;
+}
+
+bool ApplyBuiltInSoundScheme(HKEY key, bool noSounds)
+{
+	DWORD subKeyCount = 0;
+	DWORD maxSubKeyLength = 0;
+	if (RegQueryInfoKeyW(key, nullptr, nullptr, nullptr, &subKeyCount, &maxSubKeyLength, nullptr, nullptr,
+			     nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS) {
+		return false;
+	}
+
+	std::vector<wchar_t> subKeyName(maxSubKeyLength + 1);
+	for (DWORD index = 0; index < subKeyCount; index++) {
+		DWORD nameLength = static_cast<DWORD>(subKeyName.size());
+		const LSTATUS enumStatus =
+			RegEnumKeyExW(key, index, subKeyName.data(), &nameLength, nullptr, nullptr, nullptr, nullptr);
+		if (enumStatus != ERROR_SUCCESS)
+			return false;
+
+		if (std::wcscmp(subKeyName.data(), L".Current") == 0) {
+			HKEY currentKey = nullptr;
+			if (RegOpenKeyExW(key, L".Current", 0, KEY_SET_VALUE, &currentKey) != ERROR_SUCCESS)
+				return false;
+
+			bool updated = false;
+			if (noSounds) {
+				const wchar_t emptyValue[] = L"";
+				updated = RegSetValueExW(currentKey, nullptr, 0, REG_SZ,
+							 reinterpret_cast<const BYTE *>(emptyValue), sizeof(emptyValue)) ==
+					  ERROR_SUCCESS;
+			} else {
+				updated = CopyDefaultSoundEventValues(key, currentKey);
+			}
+
+			RegCloseKey(currentKey);
+			if (!updated)
+				return false;
+			continue;
+		}
+
+		HKEY childKey = nullptr;
+		if (RegOpenKeyExW(key, subKeyName.data(), 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE | KEY_SET_VALUE,
+				  &childKey) != ERROR_SUCCESS) {
+			return false;
+		}
+
+		const bool updated = ApplyBuiltInSoundScheme(childKey, noSounds);
+		RegCloseKey(childKey);
+		if (!updated)
+			return false;
+	}
+
+	return true;
+}
+
+bool WriteDwordSetting(const wchar_t *keyPath, const wchar_t *name, DWORD value)
+{
+	HKEY key = nullptr;
+	if (RegCreateKeyExW(HKEY_CURRENT_USER, keyPath, 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) !=
+	    ERROR_SUCCESS) {
+		return false;
+	}
+
+	const LSTATUS status =
+		RegSetValueExW(key, name, 0, REG_DWORD, reinterpret_cast<const BYTE *>(&value), sizeof(value));
+	RegCloseKey(key);
+	return status == ERROR_SUCCESS;
+}
+
+void NotifyWindowsSettings(const wchar_t *area)
+{
+	DWORD_PTR result = 0;
+	SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, reinterpret_cast<LPARAM>(area),
+			    SMTO_ABORTIFHUNG, 1000, &result);
+}
+#endif
+
+} // namespace
+
 OBSBasicControls::OBSBasicControls(OBSBasic *main) : QFrame(nullptr), ui(new Ui::OBSBasicControls)
 {
 	/* Create UI elements */
 	ui->setupUi(this);
+	ui->modeSwitch->setVisible(false);
+
+#ifdef _WIN32
+	std::wstring soundScheme;
+	if (ReadSoundScheme(soundScheme))
+		windowsSystemMuted = soundScheme == L".None";
+	else
+		blog(LOG_WARNING, "Could not read the Windows sound scheme from the registry");
+	connect(ui->mwButton, &QPushButton::clicked, this, &OBSBasicControls::ToggleWindowsSoundMode);
+	UpdateWindowsSoundButtonState();
+#else
+	ui->mwButton->setVisible(false);
+#endif
 
 	streamButtonMenu.reset(new QMenu());
 	startStreamAction = streamButtonMenu->addAction(QTStr("Basic.Main.StartStreaming"));
@@ -95,6 +259,76 @@ OBSBasicControls::OBSBasicControls(OBSBasic *main) : QFrame(nullptr), ui(new Ui:
 	connect(main, &OBSBasic::BroadcastFlowEnabled, this, &OBSBasicControls::EnableBroadcastFlow);
 	connect(main, &OBSBasic::ReplayBufEnabled, this, &OBSBasicControls::EnableReplayBufferButtons);
 	connect(main, &OBSBasic::VirtualCamEnabled, this, &OBSBasicControls::EnableVirtualCamButtons);
+}
+
+void OBSBasicControls::ToggleWindowsSoundMode()
+{
+#ifdef _WIN32
+	HKEY soundEventsKey = nullptr;
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, L"AppEvents\\Schemes\\Apps", 0,
+			  KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE | KEY_SET_VALUE, &soundEventsKey) != ERROR_SUCCESS) {
+		QMessageBox::warning(this, QTStr("Basic.Main.WindowsEffects"),
+				     QTStr("Basic.Main.WindowsEffectsWriteError"));
+		return;
+	}
+
+	if (!windowsSystemMuted) {
+		const bool eventsCleared = ApplyBuiltInSoundScheme(soundEventsKey, true);
+		RegCloseKey(soundEventsKey);
+		if (!eventsCleared || !WriteSoundScheme(L".None")) {
+			QMessageBox::warning(this, QTStr("Basic.Main.WindowsEffects"),
+					     QTStr("Basic.Main.WindowsEffectsWriteError"));
+			return;
+		}
+
+		windowsSystemMuted = true;
+
+		const bool aeroPeekUpdated = WriteDwordSetting(DwmKey, L"EnableAeroPeek", 0);
+		const bool previewDesktopUpdated =
+			WriteDwordSetting(ExplorerAdvancedKey, L"DisablePreviewDesktop", 1);
+		const bool peekUpdated = aeroPeekUpdated && previewDesktopUpdated;
+		NotifyWindowsSettings(L"AppEvents");
+		NotifyWindowsSettings(L"Software\\Microsoft\\Windows\\DWM");
+		NotifyWindowsSettings(L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
+
+		UpdateWindowsSoundButtonState();
+		if (!peekUpdated) {
+			QMessageBox::warning(this, QTStr("Basic.Main.WindowsEffects"),
+					     QTStr("Basic.Main.WindowsEffectsWriteError"));
+		}
+	} else {
+		const bool eventsRestored = ApplyBuiltInSoundScheme(soundEventsKey, false);
+		RegCloseKey(soundEventsKey);
+		if (!eventsRestored || !WriteSoundScheme(L".Default")) {
+			QMessageBox::warning(this, QTStr("Basic.Main.WindowsEffects"),
+					     QTStr("Basic.Main.WindowsEffectsWriteError"));
+			return;
+		}
+
+		windowsSystemMuted = false;
+		const bool aeroPeekRestored =
+			WriteDwordSetting(DwmKey, L"EnableAeroPeek", 1);
+		const bool previewDesktopRestored =
+			WriteDwordSetting(ExplorerAdvancedKey, L"DisablePreviewDesktop", 0);
+		const bool peekRestored = aeroPeekRestored && previewDesktopRestored;
+		NotifyWindowsSettings(L"AppEvents");
+		NotifyWindowsSettings(L"Software\\Microsoft\\Windows\\DWM");
+		NotifyWindowsSettings(L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
+
+		UpdateWindowsSoundButtonState();
+		if (!peekRestored) {
+			QMessageBox::warning(this, QTStr("Basic.Main.WindowsEffects"),
+					     QTStr("Basic.Main.WindowsEffectsWriteError"));
+		}
+	}
+#endif
+}
+
+void OBSBasicControls::UpdateWindowsSoundButtonState()
+{
+	setClasses(ui->mwButton, windowsSystemMuted ? "state-active" : "");
+	ui->mwButton->setToolTip(QTStr(windowsSystemMuted ? "Basic.Main.WindowsEffectsMuted"
+							 : "Basic.Main.WindowsEffects"));
 }
 
 void OBSBasicControls::StreamingPreparing()

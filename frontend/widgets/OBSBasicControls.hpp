@@ -18,8 +18,10 @@ class OBSBasicControls : public QFrame {
 	QScopedPointer<QMenu> streamButtonMenu;
 	QPointer<QAction> startStreamAction;
 	QPointer<QAction> stopStreamAction;
+	bool windowsSystemMuted = false;
 
 private slots:
+	void ToggleWindowsSoundMode();
 	void StreamingPreparing();
 	void StreamingStarting(bool broadcastAutoStart);
 	void StreamingStarted(bool withDelay);
@@ -48,6 +50,7 @@ private slots:
 	void EnableBroadcastFlow(bool enabled);
 	void EnableReplayBufferButtons(bool enabled);
 	void EnableVirtualCamButtons();
+	void UpdateWindowsSoundButtonState();
 
 public:
 	OBSBasicControls(OBSBasic *main);
